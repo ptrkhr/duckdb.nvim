@@ -2,11 +2,11 @@ local M = {}
 
 -- Create a centered floating window
 local function create_centered_float(width_ratio, height_ratio)
-  local width_ratio_val = width_ratio or 0.8
-  local height_ratio_val = height_ratio or 0.6
+  width_ratio = width_ratio or 0.8
+  height_ratio = height_ratio or 0.6
 
-  local width = math.floor(vim.o.columns * width_ratio_val)
-  local height = math.floor(vim.o.lines * height_ratio_val)
+  local width = math.floor(vim.o.columns * width_ratio)
+  local height = math.floor(vim.o.lines * height_ratio)
 
   local row = math.floor((vim.o.lines - height) / 2)
   local col = math.floor((vim.o.columns - width) / 2)
@@ -81,23 +81,23 @@ function M.edit_query(query, on_save)
     end
   end
 
+  -- Helper to close window
+  local function close_window()
+    if vim.api.nvim_win_is_valid(winnr) then
+      vim.api.nvim_win_close(winnr, true)
+    end
+  end
+
   -- Set up keymaps
   local opts = { noremap = true, silent = true, buffer = bufnr }
 
-  -- Execute on <CR> in normal mode
+  -- Execute on <CR> or <leader>w
   vim.keymap.set('n', '<CR>', execute_query, opts)
-
-  -- Execute on <leader>w
   vim.keymap.set('n', '<leader>w', execute_query, opts)
 
   -- Close on q or Escape
-  vim.keymap.set('n', 'q', function()
-    vim.api.nvim_win_close(winnr, true)
-  end, opts)
-
-  vim.keymap.set('n', '<Esc>', function()
-    vim.api.nvim_win_close(winnr, true)
-  end, opts)
+  vim.keymap.set('n', 'q', close_window, opts)
+  vim.keymap.set('n', '<Esc>', close_window, opts)
 
   -- Set cursor to first line
   vim.api.nvim_win_set_cursor(winnr, {1, 0})

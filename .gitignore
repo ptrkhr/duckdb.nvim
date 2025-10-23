@@ -39,3 +39,9 @@ luac.out
 *.x86_64
 *.hex
 
+# Test files
+test_*.lua
+
+# Vim help tags
+doc/tags
+doc/tags-*

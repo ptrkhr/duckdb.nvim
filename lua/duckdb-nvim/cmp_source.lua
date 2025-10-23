@@ -11,8 +11,14 @@ local CompletionItemKind = cmp_ok and cmp.lsp.CompletionItemKind or {
 local schema_cache = {
   tables = {},      -- { table_name = { columns = { col1, col2, ...}, column_types = { col1 = 'INTEGER', ... } } }
   last_updated = 0,
-  ttl = 60000,      -- Cache for 60 seconds
 }
+
+-- Get TTL from config
+local function get_cache_ttl()
+  local duckdb = require('duckdb-nvim')
+  local config = duckdb.get_config and duckdb.get_config() or {}
+  return config.cache_ttl or 60000  -- Default 60 seconds
+end
 
 -- Get all tables and their columns from DuckDB
 local function fetch_schema()
@@ -53,8 +59,9 @@ end
 -- Get cached schema or fetch new
 local function get_schema()
   local now = vim.loop.hrtime() / 1000000  -- Convert to milliseconds
+  local ttl = get_cache_ttl()
 
-  if now - schema_cache.last_updated > schema_cache.ttl or not next(schema_cache.tables) then
+  if now - schema_cache.last_updated > ttl or not next(schema_cache.tables) then
     local tables = fetch_schema()
     if tables then
       schema_cache.tables = tables
@@ -117,7 +124,7 @@ function source:complete(params, callback)
   for table_name, _ in pairs(schema) do
     table.insert(items, {
       label = table_name,
-      kind = require('cmp').lsp.CompletionItemKind.Class,
+      kind = CompletionItemKind.Class,
       detail = 'table',
       sortText = '1_' .. table_name,  -- Prioritize tables
     })
@@ -134,7 +141,7 @@ function source:complete(params, callback)
       -- Unqualified column name
       table.insert(items, {
         label = column_name,
-        kind = require('cmp').lsp.CompletionItemKind.Field,
+        kind = CompletionItemKind.Field,
         detail = string.format('%s (%s)', table_name, data_type),
         sortText = priority .. '_' .. column_name,
       })
@@ -142,7 +149,7 @@ function source:complete(params, callback)
       -- Qualified column name (table.column)
       table.insert(items, {
         label = table_name .. '.' .. column_name,
-        kind = require('cmp').lsp.CompletionItemKind.Field,
+        kind = CompletionItemKind.Field,
         detail = data_type,
         sortText = priority .. '_' .. table_name .. '.' .. column_name,
       })

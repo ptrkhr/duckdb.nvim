@@ -208,6 +208,16 @@ function M.update_buffer_content(bufnr, result, format)
   vim.api.nvim_buf_set_option(bufnr, 'modified', false)
 end
 
+-- Helper function to update buffer content based on pagination state
+local function update_buffer_with_format(bufnr, meta, format)
+  meta.format = format
+  if meta.pagination then
+    M.update_buffer_content_paginated(bufnr, meta.result, format, meta.pagination)
+  else
+    M.update_buffer_content(bufnr, meta.result, format)
+  end
+end
+
 -- Toggle format for buffer
 function M.toggle_format(bufnr)
   local meta = result_buffers[bufnr]
@@ -226,10 +236,10 @@ function M.toggle_format(bufnr)
   end
 
   local next_idx = (current_idx % #formats) + 1
-  meta.format = formats[next_idx]
+  local new_format = formats[next_idx]
 
-  M.update_buffer_content(bufnr, meta.result, meta.format)
-  vim.notify('Format: ' .. meta.format, vim.log.levels.INFO)
+  update_buffer_with_format(bufnr, meta, new_format)
+  vim.notify('Format: ' .. new_format, vim.log.levels.INFO)
 end
 
 -- Set format for current buffer
@@ -247,12 +257,7 @@ function M.set_current_format(format)
     return
   end
 
-  meta.format = format
-  if meta.pagination then
-    M.update_buffer_content_paginated(bufnr, meta.result, format, meta.pagination)
-  else
-    M.update_buffer_content(bufnr, meta.result, format)
-  end
+  update_buffer_with_format(bufnr, meta, format)
   vim.notify('Format: ' .. format, vim.log.levels.INFO)
 end
 

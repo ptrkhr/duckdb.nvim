@@ -73,7 +73,7 @@ vim.api.nvim_create_user_command('DuckDBPaginate', function(opts)
   local args = vim.split(opts.args, '%s+', { trimempty = true })
 
   -- Extract page_size if provided (last argument is a number)
-  local page_size = 100
+  local page_size = nil  -- Will use config default if not provided
   local query_parts = {}
 
   for i, arg in ipairs(args) do
@@ -119,3 +119,11 @@ end, { nargs = 0, desc = 'Edit query for current result buffer' })
 vim.api.nvim_create_user_command('DuckDBBuffers', function()
   require('duckdb-nvim').list_sql_buffers()
 end, { nargs = 0, desc = 'List all SQL buffers' })
+
+vim.api.nvim_create_user_command('DuckDBHistory', function()
+  require('duckdb-nvim').show_history()
+end, { nargs = 0, desc = 'Show query history' })
+
+vim.api.nvim_create_user_command('DuckDBClearHistory', function()
+  require('duckdb-nvim').clear_history()
+end, { nargs = 0, desc = 'Clear query history' })

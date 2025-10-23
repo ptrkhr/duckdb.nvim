@@ -1,17 +1,35 @@
 local M = {}
 
+-- Helper: Get sorted column names from result
+local function get_sorted_columns(result)
+  if not result or #result == 0 then
+    return {}
+  end
+
+  local columns = {}
+  for col, _ in pairs(result[1]) do
+    table.insert(columns, col)
+  end
+  table.sort(columns)
+  return columns
+end
+
+-- Helper: Build table separator line
+local function build_separator(columns, widths, left, mid, right)
+  local parts = {}
+  for _, col in ipairs(columns) do
+    table.insert(parts, string.rep('─', widths[col] + 2))
+  end
+  return left .. table.concat(parts, mid) .. right
+end
+
 -- Format result as ASCII table
 function M.format_table(result)
   if not result or #result == 0 then
     return {'-- No results --'}
   end
 
-  -- Get column names from first row
-  local columns = {}
-  for col, _ in pairs(result[1]) do
-    table.insert(columns, col)
-  end
-  table.sort(columns)
+  local columns = get_sorted_columns(result)
 
   -- Calculate column widths
   local widths = {}
@@ -29,13 +47,8 @@ function M.format_table(result)
   -- Build table
   local lines = {}
 
-  -- Header separator
-  local header_parts = {}
-  for _, col in ipairs(columns) do
-    table.insert(header_parts, string.rep('─', widths[col] + 2))
-  end
-  local separator = '┌' .. table.concat(header_parts, '┬') .. '┐'
-  table.insert(lines, separator)
+  -- Top separator
+  table.insert(lines, build_separator(columns, widths, '┌', '┬', '┐'))
 
   -- Header row
   local header_vals = {}
@@ -45,13 +58,8 @@ function M.format_table(result)
   end
   table.insert(lines, '│' .. table.concat(header_vals, '│') .. '│')
 
-  -- Header bottom separator
-  local mid_parts = {}
-  for _, col in ipairs(columns) do
-    table.insert(mid_parts, string.rep('─', widths[col] + 2))
-  end
-  local mid_separator = '├' .. table.concat(mid_parts, '┼') .. '┤'
-  table.insert(lines, mid_separator)
+  -- Middle separator
+  table.insert(lines, build_separator(columns, widths, '├', '┼', '┤'))
 
   -- Data rows
   for _, row in ipairs(result) do
@@ -65,12 +73,7 @@ function M.format_table(result)
   end
 
   -- Bottom separator
-  local bottom_parts = {}
-  for _, col in ipairs(columns) do
-    table.insert(bottom_parts, string.rep('─', widths[col] + 2))
-  end
-  local bottom = '└' .. table.concat(bottom_parts, '┴') .. '┘'
-  table.insert(lines, bottom)
+  table.insert(lines, build_separator(columns, widths, '└', '┴', '┘'))
 
   -- Add row count
   table.insert(lines, '')
@@ -86,13 +89,7 @@ function M.format_csv(result)
   end
 
   local lines = {}
-
-  -- Get column names
-  local columns = {}
-  for col, _ in pairs(result[1]) do
-    table.insert(columns, col)
-  end
-  table.sort(columns)
+  local columns = get_sorted_columns(result)
 
   -- Header
   table.insert(lines, table.concat(columns, ','))

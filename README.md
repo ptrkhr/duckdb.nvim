@@ -4,18 +4,20 @@ DuckDB integration for Neovim - Query structured data with SQL directly in your 
 
 ## Features
 
-- In-memory DuckDB database for fast data analysis
-- Load CSV, Parquet, JSON/JSONL files
-- Multiple result formats: ASCII tables, CSV, JSONL
-- Execute queries from buffers or command line
-- **Pagination support for large datasets**
-- Export results to files
-- SQL buffer support with keybindings
+- 🚀 In-memory DuckDB database for fast data analysis
+- 📊 Load CSV, Parquet, JSON/JSONL files
+- 🎨 Multiple result formats: ASCII tables, CSV, JSONL
+- 📄 Pagination support for large datasets
+- ✨ SQL autocompletion via nvim-cmp integration
+- 📝 Query history and interactive query editing
+- 💾 Export results to various formats
 
 ## Requirements
 
 - Neovim >= 0.8.0
-- DuckDB CLI installed and in PATH (`brew install duckdb` or https://duckdb.org/docs/installation/)
+- DuckDB CLI installed and in PATH
+  - macOS: `brew install duckdb`
+  - Other platforms: https://duckdb.org/docs/installation/
 
 ## Installation
 
@@ -26,8 +28,9 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
   'ptrkhr/duckdb.nvim',
   config = function()
     require('duckdb-nvim').setup({
-      default_format = 'table',  -- 'table', 'csv', 'jsonl'
-      result_window = 'vsplit',  -- 'split', 'vsplit'
+      default_format = 'table',      -- 'table', 'csv', 'jsonl'
+      result_window = 'vsplit',      -- 'split', 'vsplit'
+      default_page_size = 100,       -- Rows per page for pagination
       keymaps = {
         execute = '<leader>de',
         refresh = '<leader>dr',
@@ -38,339 +41,176 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-### nvim-cmp Integration (Optional)
+### Optional: nvim-cmp Integration
 
 For SQL autocompletion of table and column names:
 
 ```lua
-{
-  'ptrkhr/duckdb.nvim',
-  config = function()
-    require('duckdb-nvim').setup({
-      default_format = 'table',
-      result_window = 'vsplit',
-    })
-  end
-}
-
 -- In your nvim-cmp setup:
 require('cmp').setup({
   sources = {
-    { name = 'duckdb' },  -- Add DuckDB completion source
-    { name = 'buffer' },
-    { name = 'path' },
+    { name = 'duckdb' },  -- Add DuckDB completion
     -- ... other sources
   }
 })
 ```
 
-**Features:**
-- Auto-completes table names
-- Auto-completes column names (both `column` and `table.column`)
-- Smart ranking: prioritizes columns from tables in your `FROM` clause
-- Shows data types in completion details
-- Cached for performance (60s TTL)
+Provides smart SQL completion with table/column names and type information.
 
-## Usage
-
-### Loading Data
+## Quick Start
 
 ```vim
-" Load a CSV file (table name auto-generated from filename)
-:DuckDBLoad data/sales.csv
+" 1. Load data
+:DuckDBLoad ~/data/sales.csv
 
-" Load with custom table name
-:DuckDBLoad data/sales.csv my_sales
+" 2. Query it
+:DuckDB SELECT * FROM sales WHERE amount > 1000
 
-" Supported formats: CSV, Parquet, JSON, JSONL
-:DuckDBLoad data/users.parquet
-:DuckDBLoad data/events.jsonl customers
+" 3. Navigate results
+" Press <leader>df to cycle formats (table → csv → jsonl)
+" Press q to close
+" Press <leader>dr to refresh
 
-" Note: File basename is used as table name by default
-" Example: sales-2024.csv → table name: sales_2024
+" 4. For large datasets, use pagination
+:DuckDBPaginate SELECT * FROM sales ORDER BY date 100
+" Use ]p and [p to navigate pages
 ```
 
-### Executing Queries
+## Key Features
+
+### Query Execution
 
 ```vim
-" Execute SQL directly
-:DuckDB SELECT * FROM my_sales WHERE amount > 1000
+" Execute directly
+:DuckDB SELECT COUNT(*) FROM my_table
 
-" In a .sql buffer, press <leader>de to execute
-" Visual select SQL text and press <leader>de to execute selection
+" In a .sql file, press <leader>de to execute
+" Visual select text and press <leader>de for partial execution
 ```
 
-### Pagination (for Large Datasets)
-
-When working with large datasets, use pagination to load results in manageable chunks:
+### Pagination for Large Datasets
 
 ```vim
-" Execute query with pagination (default: 100 rows per page)
-:DuckDBPaginate SELECT * FROM large_table
-
-" Specify custom page size (e.g., 50 rows per page)
-:DuckDBPaginate SELECT * FROM large_table WHERE status = 'active' 50
-
-" In paginated result buffers:
-" ]p or :DuckDBNextPage - Go to next page
-" [p or :DuckDBPrevPage - Go to previous page
-" :DuckDBGotoPage 5 - Jump to page 5
-" <leader>dr - Refresh (stays on current page)
-" <leader>df - Toggle format (table/csv/jsonl)
+:DuckDBPaginate SELECT * FROM large_table 50
+]p  " Next page
+[p  " Previous page
+:DuckDBGotoPage 5  " Jump to page 5
 ```
 
-**Pagination Features:**
-- Only loads one page at a time (memory efficient)
-- Shows page info: `Page 3/10 (rows 201-300 of 1000)`
-- Total row count displayed
-- State persists across refreshes and format changes
+Loads only one page at a time for memory efficiency.
 
-**Example with large dataset:**
+### Interactive Query Editing
+
 ```vim
-:DuckDBLoad huge_file.parquet
-:DuckDBPaginate SELECT * FROM huge_file WHERE date >= '2024-01-01' ORDER BY timestamp 500
-
-" Navigate: ]p to see next 500 rows, [p to go back
-" Switch to JSONL for row-by-row editing: <leader>df
+" In any result buffer, press 'e' to edit the query
+" Modify and press <CR> to re-execute
+" Pagination state is preserved!
 ```
 
-### Working with Results
-
-Result buffers support:
-- `q` - Close buffer
-- `<leader>dr` - Refresh (re-run query)
-- `<leader>df` - Toggle format (table → csv → jsonl)
-- `<leader>dq` or `e` - Edit query in popup window
+### Query History
 
 ```vim
-" Change format in result buffer
-:DuckDBFormat jsonl
-:DuckDBFormat csv
-:DuckDBFormat table
-
-" Refresh current result
-:DuckDBRefresh
-
-" Edit and re-execute query
-:DuckDBEditQuery
-" Or press 'e' in result buffer
-```
-
-### Editing Queries
-
-Edit the query for any result buffer in a popup window:
-
-```vim
-" In a result buffer, press 'e' or <leader>dq
-" Or use the command:
-:DuckDBEditQuery
-```
-
-**Features:**
-- Opens a centered popup with SQL syntax highlighting
-- Shows the original query for editing
-- Press `<CR>` or `<leader>w` to execute the modified query
-- Press `q` or `<Esc>` to cancel
-- **Pagination preserved**: If viewing page 5 of 10, stays on page 5 after edit
-- Total count updated automatically for modified queries
-- If current page becomes invalid (e.g., fewer results), adjusts to last valid page
-
-**Example workflow:**
-```vim
-" Start with a query
-:DuckDBPaginate SELECT * FROM sales WHERE amount > 1000 100
-
-" Navigate to page 3
-]p
-]p
-
-" Realize you want to change the filter
-e                    " Opens popup editor
-
-" Modify query: WHERE amount > 5000
-" Press <CR>
-
-" Result: Query re-executed, still on page 3 (if valid)
+:DuckDBHistory        " Browse and re-execute previous queries
+:DuckDBClearHistory   " Clear history
 ```
 
 ### Schema Inspection
 
 ```vim
-" Show all tables and columns
-:DuckDBSchema
-
-" Describe specific table
-:DuckDBSchema my_sales
+:DuckDBSchema           " Show all tables
+:DuckDBSchema my_table  " Show specific table schema
 ```
 
-### Exporting Data
+### Data Export
 
 ```vim
-" Export table to file
-:DuckDBExport my_sales output.csv
-:DuckDBExport my_sales output.parquet
-:DuckDBExport my_sales output.jsonl
+:DuckDBExport my_table output.parquet
+:DuckDBExport results output.csv
 ```
 
-### Database Management
+### Result Formats
 
-```vim
-" Reset database (clear all tables)
-:DuckDBReset
-```
+Toggle between three formats with `<leader>df`:
 
-## Example Workflow
+- **table** - ASCII tables with box drawing (default)
+- **csv** - Comma-separated values
+- **jsonl** - JSON Lines (one object per line)
 
-```vim
-" Load some data
-:DuckDBLoad ~/data/sales.csv
-:DuckDBLoad ~/data/customers.parquet
+## Working with SQL Buffers
 
-" Check what's loaded
-:DuckDBSchema
-
-" Query the data
-:DuckDB SELECT c.name, SUM(s.amount) as total FROM customers c JOIN sales s ON c.id = s.customer_id GROUP BY c.name ORDER BY total DESC LIMIT 10
-
-" In result buffer:
-" - Press <leader>df to switch to JSONL format
-" - Press <leader>dr to refresh
-" - Press q to close
-
-" Export results
-:DuckDBExport sales filtered_sales.parquet
-```
-
-## SQL Buffer Workflow
-
-Create a file `analysis.sql`:
+Create `analysis.sql`:
 
 ```sql
--- Load some data first with :DuckDBLoad
-
 SELECT
   category,
   COUNT(*) as count,
-  AVG(price) as avg_price,
-  SUM(quantity) as total_qty
+  AVG(price) as avg_price
 FROM sales
 WHERE date >= '2024-01-01'
 GROUP BY category
-ORDER BY total_qty DESC;
+ORDER BY count DESC;
 ```
 
-Press `<leader>de` in normal mode to execute the entire buffer, or visually select specific queries and press `<leader>de`.
+Press `<leader>de` to execute. Results open in a split.
 
-## Result Formats
+## Documentation
 
-### Table (default)
-```
-┌────────────┬───────┬───────────┐
-│ category   │ count │ avg_price │
-├────────────┼───────┼───────────┤
-│ Electronics│   150 │    299.99 │
-│ Books      │   423 │     15.99 │
-└────────────┴───────┴───────────┘
--- 2 rows --
+For comprehensive documentation, see:
+```vim
+:help duckdb-nvim
 ```
 
-### CSV
-```
-category,count,avg_price
-Electronics,150,299.99
-Books,423,15.99
-```
+The help file includes:
+- Complete command reference
+- Configuration options
+- Lua API documentation
+- Advanced examples and workflows
+- Troubleshooting guide
 
-### JSONL (one object per line)
-```
-{"category":"Electronics","count":150,"avg_price":299.99}
-{"category":"Books","count":423,"avg_price":15.99}
-```
+## DuckDB Features
 
-## Advanced DuckDB Features
-
-DuckDB supports many advanced features:
+DuckDB supports powerful features like CTEs, window functions, and reading files directly in queries. See the [DuckDB documentation](https://duckdb.org/docs/) for details.
 
 ```sql
--- Read files directly in queries
+-- Read files directly
 SELECT * FROM read_csv_auto('data/*.csv');
-SELECT * FROM read_parquet('s3://bucket/data/*.parquet');
-
--- JSON operations
-SELECT data->>'$.name' as name FROM json_table;
+SELECT * FROM read_parquet('data/*.parquet');
 
 -- Window functions
-SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as rank FROM products;
-
--- CTEs
-WITH top_customers AS (
-  SELECT customer_id, SUM(amount) as total
-  FROM sales GROUP BY customer_id
-  ORDER BY total DESC LIMIT 10
-)
-SELECT * FROM top_customers;
+SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as rank
+FROM products;
 ```
 
-## API Reference
-
-### Commands
+## Common Commands
 
 | Command | Description |
 |---------|-------------|
 | `:DuckDB <query>` | Execute SQL query |
-| `:DuckDBPaginate <query> [page_size]` | Execute query with pagination |
-| `:DuckDBLoad <file> [table_name]` | Load file into table (optional custom name) |
-| `:DuckDBExport <table> <file>` | Export table to file |
-| `:DuckDBSchema [table]` | Show schema (all tables or specific) |
-| `:DuckDBExecute` | Execute current buffer/selection |
-| `:DuckDBFormat <format>` | Set format (table/csv/jsonl) |
-| `:DuckDBRefresh` | Refresh current result buffer |
-| `:DuckDBEditQuery` | Edit query in popup (preserves pagination) |
-| `:DuckDBNextPage` | Go to next page (paginated only) |
-| `:DuckDBPrevPage` | Go to previous page (paginated only) |
-| `:DuckDBGotoPage <n>` | Jump to specific page |
+| `:DuckDBLoad <file> [table]` | Load file into database |
+| `:DuckDBPaginate <query> [size]` | Execute with pagination |
+| `:DuckDBSchema [table]` | Show schema |
+| `:DuckDBHistory` | Browse query history |
+| `:DuckDBExport <table> <file>` | Export table |
 | `:DuckDBReset` | Clear database |
 
-### Keybindings
+See `:help duckdb-nvim-commands` for the complete list.
 
-#### SQL Buffers (.sql files)
-- `<leader>de` - Execute buffer/visual selection
-- `]p` - Next page (in result buffer)
-- `[p` - Previous page (in result buffer)
+## Keybindings
 
-#### Result Buffers
-- `q` - Close buffer
-- `e` or `<leader>dq` - Edit query in popup
-- `<leader>dr` - Refresh results
+**In SQL buffers:**
+- `<leader>de` - Execute buffer/selection
+
+**In result buffers:**
+- `q` - Close
+- `e` - Edit query
+- `<leader>dr` - Refresh
 - `<leader>df` - Toggle format
-- `]p` - Next page (paginated only)
-- `[p` - Previous page (paginated only)
-
-### Lua API
-
-```lua
-local duckdb = require('duckdb-nvim')
-
--- Execute queries
-duckdb.execute("SELECT * FROM my_table")
-duckdb.execute_paginated("SELECT * FROM large_table", 100)
-
--- Navigate pages
-duckdb.next_page()
-duckdb.prev_page()
-duckdb.goto_page(5)
-
--- Data management
-duckdb.load_file("data.csv")
-duckdb.load_file_as("data.csv", "my_table")
-duckdb.export("my_table", "output.parquet")
-
--- Result buffer control
-duckdb.set_format("jsonl")
-duckdb.refresh_result()
-duckdb.edit_query()  -- Edit query in popup
-```
+- `]p` / `[p]` - Next/previous page (paginated results)
 
 ## License
 
 MIT
+
+---
+
+For bug reports and feature requests, please visit the [GitHub repository](https://github.com/ptrkhr/duckdb.nvim).
